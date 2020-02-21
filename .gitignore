@@ -13,3 +13,4 @@ default.json
 *.server
 *.code-workspace
 package-lock.json
+.needBackup

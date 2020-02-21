@@ -6,8 +6,8 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
-    "axios": "^0.19.2",
-    "cheerio": "^1.0.0-rc.3",
+    "axios": "*",
+    "cheerio": "*",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "dom-parser": "*",
@@ -16,7 +16,7 @@
     "jade": "~1.11.0",
     "morgan": "~1.9.1",
     "redis": "*",
-		"axios": "*",
-		"cheerio": "*"
+    "config": "*",
+    "node-schedule": "*"
   }
 }
