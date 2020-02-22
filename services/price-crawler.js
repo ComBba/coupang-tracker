@@ -42,7 +42,14 @@ function getProductIsAvail(url) {
 			var ret = true;
 			var body = cheerio.load(res.data);
 			var available = body(".oos-label");
-			if (available.length != 0) ret = false;
+			// prod-not-find-known__buy__button
+			var notfound = body(".prod-not-find-known__buy__button");
+			console.log("getProductIsAvail:", url, available.length, notfound.length);
+			if (available.length != 0) {
+				ret = false;
+			} else if (notfound.length != 0) {
+				ret = false;
+			}
 			resolve(ret);
 		})
 		.catch(function(error) {
@@ -285,7 +292,9 @@ function priceUpdateBatch(productID) {
 													if (e) {
 														console.error("getProductTitle err:", err);
 													} else {
-														var msg = r.title + " state changed to " + r.available + " https:" + r.image;
+														var avail = "품절";
+														if (r.available) avail = "판매중";
+														var msg = r.title + " state changed to " + avail + " https:" + r.image;
 														messaging.sendTelegram(msg);
 													}
 												});
@@ -320,7 +329,7 @@ getProductList(function(err, ret) {
 });
 
 // Run job on every 30 min
-var job = schedule.scheduleJob('*/30 * * * *', function() {
+var job = schedule.scheduleJob('*/10 * * * *', function() {
 	// get product list
 	getProductList(function(err, ret) {
 		if (err) {

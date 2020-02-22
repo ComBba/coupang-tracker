@@ -85,6 +85,7 @@ $(document).ready(function() {
 
 	getProductList(function(data) {
 		for (var i = 0; i < data.length; i++) {
+			console.log(data[i]);
 			createPane(data[i]);
 			getPriceHistory(data[i].productID);
 		}
@@ -160,6 +161,7 @@ function drawVisualization(history, productID) {
 	var csvString = exportHashToCSV(history);
 	// transform the CSV string into a 2-dimensional array
 	var arrayData = $.csv.toArrays(csvString, {onParseValue: $.csv.hooks.castToScalar});
+	//console.log(JSON.stringify(arrayData));
 	// this new DataTable object holds all the data
 	var data = new google.visualization.arrayToDataTable(arrayData);
 	// CAPACITY - En-route ATFM delay - YY - CHART
@@ -173,6 +175,7 @@ function drawVisualization(history, productID) {
 			//title: 'Price changes of ' + productID,
 			//titleTextStyle : {color: 'grey', fontSize: 11},
 			hAxis: {direction: 1},
+			//curveType: "function",
 			legend: {position: 'none'},
 		}
 	});
@@ -205,7 +208,7 @@ function createPane(item) {
 	var pane = document.getElementById(productID);
 	if (pane == undefined) {
 		pane = document.createElement("div");
-		pane.className = "col-4";
+		pane.className = "col-6 col-sm-6 col-lg-4 col-xl-4";
 		pane.id = productID;
 		if (item.available != true)
 			pane.style.backgroundColor = "lightgray";
