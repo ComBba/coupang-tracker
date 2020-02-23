@@ -109,6 +109,17 @@ $(document).ready(function() {
 			getPriceHistory(data[i].productID);
 		}
 	});
+
+	// update page periodically
+	setInterval(function() {
+		getProductList(function(data) {
+			for (var i = 0; i < data.length; i++) {
+				console.log(data[i]);
+				createPane(data[i]);
+				getPriceHistory(data[i].productID);
+			}
+		});
+	}, 10 * 60 * 1000);
 });
 
 function parseURL(url) {
@@ -227,58 +238,65 @@ function createPane(item) {
 	}
 
 	var pane = document.getElementById(productID);
-	if (pane) {
-		pane.parentNode.removeChild(pane);
+	if (pane == undefined) {
+		pane = document.createElement("div");
+		pane.className = "col-6 col-sm-6 col-lg-4 col-xl-4";
+		pane.id = productID;
+		if (item.available != 0)
+			pane.style.backgroundColor = "lightgray";
+		pane.style.border = "thin solid #08FF00";
+		var title = document.createElement("div");
+		title.innerHTML = item.title;
+		pane.appendChild(title);
+		var pricepane = document.createElement("div");
+		pricepane.id = "price-" + productID;
+		pricepane.innerHTML = numberWithCommas(price) + "원 (" + pricediff + ")";
+		pane.appendChild(pricepane);
+		var availpane = document.createElement("div");
+		availpane.id = "avail-" + productID;
+		availpane.innerHTML = isAvailable;
+		pane.appendChild(availpane);
+		var a = document.createElement("a");
+		a.setAttribute("href", "https://www.coupang.com/vp/products/" + productID);
+		a.setAttribute("target", productID);
+		var imagediv = document.createElement("div");
+		var img = document.createElement("IMG");
+		img.src = item.image;
+		img.width = "100";
+		a.appendChild(img);
+		imagediv.appendChild(a);
+		pane.appendChild(imagediv);
+		var chartPane = document.createElement("div");
+		chartPane.id = "chart-" + productID;
+		pane.appendChild(chartPane);
+
+		var delbtn = document.createElement("BUTTON");
+		delbtn.className = "btn btn-danger btn-sm";
+		delbtn.type = "button";
+		delbtn.id = "delbtn-" + productID;
+		delbtn.innerHTML = "remove";
+		delbtn.onclick = function() {
+			var ID = this.id.split("delbtn-")[1];
+			if (confirm("Wanna delete " + item.title + "?")) {
+				removeProduct(ID, function(e, r) {
+					if (e) {
+						console.error(e);
+						alert(e);
+					} else {
+						var p = document.getElementById(ID);
+						p.parentNode.removeChild(p);
+					}
+				});
+			}
+		};
+		pane.appendChild(delbtn);
+
+		content.appendChild(pane);
+	} else {
+		var pricepane = document.getElementById("price-" + productID);
+		pricepane.innerHTML = numberWithCommas(price) + "원 (" + pricediff + ")";
+		var availpane = document.getElementById("avail-" + productID);
+		availpane.innerHTML = isAvailable;
+		console.log(productID, "updated");
 	}
-	pane = document.createElement("div");
-	pane.className = "col-6 col-sm-6 col-lg-4 col-xl-4";
-	pane.id = productID;
-	if (item.available != 0)
-		pane.style.backgroundColor = "lightgray";
-	pane.style.border = "thin solid #08FF00";
-	var title = document.createElement("div");
-	title.innerHTML = item.title;
-	pane.appendChild(title);
-	var pricepane = document.createElement("div");
-	pricepane.innerHTML = numberWithCommas(price) + "원 (" + pricediff + ")";
-	pane.appendChild(pricepane);
-	var availpane = document.createElement("div");
-	availpane.innerHTML = isAvailable;
-	pane.appendChild(availpane);
-	var a = document.createElement("a");
-	a.setAttribute("href", "https://www.coupang.com/vp/products/" + productID);
-	a.setAttribute("target", productID);
-	var imagediv = document.createElement("div");
-	var img = document.createElement("IMG");
-	img.src = item.image;
-	img.width = "100";
-	a.appendChild(img);
-	imagediv.appendChild(a);
-	pane.appendChild(imagediv);
-	var chartPane = document.createElement("div");
-	chartPane.id = "chart-" + productID;
-	pane.appendChild(chartPane);
-
-	var delbtn = document.createElement("BUTTON");
-	delbtn.className = "btn btn-danger btn-sm";
-	delbtn.type = "button";
-	delbtn.id = "delbtn-" + productID;
-	delbtn.innerHTML = "remove";
-	delbtn.onclick = function() {
-		var ID = this.id.split("delbtn-")[1];
-		if (confirm("Wanna delete " + item.title + "?")) {
-			removeProduct(ID, function(e, r) {
-				if (e) {
-					console.error(e);
-					alert(e);
-				} else {
-					var p = document.getElementById(ID);
-					p.parentNode.removeChild(p);
-				}
-			});
-		}
-	};
-	pane.appendChild(delbtn);
-
-	content.appendChild(pane);
 }
