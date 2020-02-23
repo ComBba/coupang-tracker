@@ -74,6 +74,25 @@ $(document).ready(function() {
 		}
 		addpane.appendChild(addbtn);
 	}
+	var reloadbtn = document.getElementById("reloadbtn");
+	if (reloadbtn == undefined) {
+		reloadbtn = document.createElement("button");
+		reloadbtn.id = "reloadbtn";
+		reloadbtn.type = "button";
+		reloadbtn.className = "btn btn-info btn-sm";
+		reloadbtn.innerHTML = "reload";
+		reloadbtn.onclick = function() {
+			getProductList(function(data) {
+				for (var i = 0; i < data.length; i++) {
+					console.log(data[i]);
+					createPane(data[i]);
+					getPriceHistory(data[i].productID);
+				}
+			});
+		}
+		addpane.appendChild(reloadbtn);
+	}
+
 
 	var content = document.getElementById("content");
 	if (content == undefined) {
@@ -199,64 +218,67 @@ function createPane(item) {
 	else
 		pricediff = numberWithCommas(pricediff);
 	var isAvailable = "unknown";
-	if (item.available == true) {
+	if (item.available == 0) {
 		isAvailable = "판매중";
-	} else if (item.available == false) {
+	} else if (item.available == 1) {
 		isAvailable = "품절";
+	} else if (item.available == 2) {
+		isAvailable = "판매중지";
 	}
 
 	var pane = document.getElementById(productID);
-	if (pane == undefined) {
-		pane = document.createElement("div");
-		pane.className = "col-6 col-sm-6 col-lg-4 col-xl-4";
-		pane.id = productID;
-		if (item.available != true)
-			pane.style.backgroundColor = "lightgray";
-		pane.style.border = "thin solid #08FF00";
-		var title = document.createElement("div");
-		title.innerHTML = item.title;
-		pane.appendChild(title);
-		var pricepane = document.createElement("div");
-		pricepane.innerHTML = numberWithCommas(price) + "원 (" + pricediff + ")";
-		pane.appendChild(pricepane);
-		var availpane = document.createElement("div");
-		availpane.innerHTML = isAvailable;
-		pane.appendChild(availpane);
-		var a = document.createElement("a");
-		a.setAttribute("href", "https://www.coupang.com/vp/products/" + productID);
-		a.setAttribute("target", productID);
-		var imagediv = document.createElement("div");
-		var img = document.createElement("IMG");
-		img.src = item.image;
-		img.width = "100";
-		a.appendChild(img);
-		imagediv.appendChild(a);
-		pane.appendChild(imagediv);
-		var chartPane = document.createElement("div");
-		chartPane.id = "chart-" + productID;
-		pane.appendChild(chartPane);
-
-		var delbtn = document.createElement("BUTTON");
-		delbtn.className = "btn btn-danger btn-sm";
-		delbtn.type = "button";
-		delbtn.id = "delbtn-" + productID;
-		delbtn.innerHTML = "remove";
-		delbtn.onclick = function() {
-			var ID = this.id.split("delbtn-")[1];
-			if (confirm("Wanna delete " + item.title + "?")) {
-				removeProduct(ID, function(e, r) {
-					if (e) {
-						console.error(e);
-						alert(e);
-					} else {
-						var p = document.getElementById(ID);
-						p.parentNode.removeChild(p);
-					}
-				});
-			}
-		};
-		pane.appendChild(delbtn);
-
-		content.appendChild(pane);
+	if (pane) {
+		pane.parentNode.removeChild(pane);
 	}
+	pane = document.createElement("div");
+	pane.className = "col-6 col-sm-6 col-lg-4 col-xl-4";
+	pane.id = productID;
+	if (item.available != 0)
+		pane.style.backgroundColor = "lightgray";
+	pane.style.border = "thin solid #08FF00";
+	var title = document.createElement("div");
+	title.innerHTML = item.title;
+	pane.appendChild(title);
+	var pricepane = document.createElement("div");
+	pricepane.innerHTML = numberWithCommas(price) + "원 (" + pricediff + ")";
+	pane.appendChild(pricepane);
+	var availpane = document.createElement("div");
+	availpane.innerHTML = isAvailable;
+	pane.appendChild(availpane);
+	var a = document.createElement("a");
+	a.setAttribute("href", "https://www.coupang.com/vp/products/" + productID);
+	a.setAttribute("target", productID);
+	var imagediv = document.createElement("div");
+	var img = document.createElement("IMG");
+	img.src = item.image;
+	img.width = "100";
+	a.appendChild(img);
+	imagediv.appendChild(a);
+	pane.appendChild(imagediv);
+	var chartPane = document.createElement("div");
+	chartPane.id = "chart-" + productID;
+	pane.appendChild(chartPane);
+
+	var delbtn = document.createElement("BUTTON");
+	delbtn.className = "btn btn-danger btn-sm";
+	delbtn.type = "button";
+	delbtn.id = "delbtn-" + productID;
+	delbtn.innerHTML = "remove";
+	delbtn.onclick = function() {
+		var ID = this.id.split("delbtn-")[1];
+		if (confirm("Wanna delete " + item.title + "?")) {
+			removeProduct(ID, function(e, r) {
+				if (e) {
+					console.error(e);
+					alert(e);
+				} else {
+					var p = document.getElementById(ID);
+					p.parentNode.removeChild(p);
+				}
+			});
+		}
+	};
+	pane.appendChild(delbtn);
+
+	content.appendChild(pane);
 }

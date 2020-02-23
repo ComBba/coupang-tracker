@@ -86,6 +86,9 @@ router.post('/register/add', function(req, res, next) {
 	crawler.getProduct(productURL).then(function(r) {
 		if (r.price) {
 			var data = r;
+			crawler.setProductAvailable(productID, r.available, function(e, r) {
+				// do nothing for now
+			});
 			crawler.setProductPrice(productID, parseInt(r.price), function(err, ret) {
 				if (err) {
 					res.status(503);

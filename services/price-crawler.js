@@ -36,19 +36,22 @@ function getProductTitle(url) {
 	});
 }
 
+// available: 0
+// out of stock: 1
+// unavailable: 2
 function getProductIsAvail(url) {
 	return new Promise(function(resolve, reject) {
 		axios.get(url).then(function(res) {
-			var ret = true;
+			var ret = 0;
 			var body = cheerio.load(res.data);
 			var available = body(".oos-label");
 			// prod-not-find-known__buy__button
 			var notfound = body(".prod-not-find-known__buy__button");
 			console.log("getProductIsAvail:", url, available.length, notfound.length);
 			if (available.length != 0) {
-				ret = false;
+				ret = 1;
 			} else if (notfound.length != 0) {
-				ret = false;
+				ret = 2;
 			}
 			resolve(ret);
 		})
@@ -229,7 +232,7 @@ function priceUpdateBatch(productID) {
 								var diff = oldPrice - newPrice;
 								console.log(productID, "price down");
 								getProduct(url).then(function(r) {
-									var msg = "Price DOWN " + diff + "won \n" + r.title + "\n https:" + r.image;
+									var msg = "Price DOWN " + diff + "won \n" + r.title + "\n" + productURL + productID;
 									messaging.sendTelegram(msg);
 								});
 							} else if (oldPrice < newPrice) {
@@ -237,7 +240,7 @@ function priceUpdateBatch(productID) {
 								var diff = newPrice - oldPrice;
 								console.log(productID, "price up");
 								getProduct(url).then(function(r) {
-									var msg = "Price UP " + diff + "won \n" + r.title + "\n https:" + r.image;
+									var msg = "Price UP " + diff + "won \n" + r.title + "\n" + productURL + productID;
 									messaging.sendTelegram(msg);
 								});
 							}
@@ -292,9 +295,10 @@ function priceUpdateBatch(productID) {
 													if (e) {
 														console.error("getProductTitle err:", err);
 													} else {
-														var avail = "품절";
-														if (r.available) avail = "판매중";
-														var msg = r.title + " state changed to " + avail + " https:" + r.image;
+														var avail = "판매중";
+														if (r.available == 1) avail = "품절";
+														else if (r.available ==2) avail = "판매중지"
+														var msg = r.title + " state changed to " + avail + "\n" + url;//" https:" + r.image;
 														messaging.sendTelegram(msg);
 													}
 												});
