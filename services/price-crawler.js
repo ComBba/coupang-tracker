@@ -5,6 +5,7 @@ var axios = require('axios');
 var cache = require('./cache');
 var productKey = config.get("cache.keys.product");
 var productURL = config.get("coupang.productURL");
+var productNoti = config.get("cache.keys.productNotify");
 
 var messaging = require('./messaging');
 
@@ -64,14 +65,17 @@ function getProductIsAvail(url) {
 
 function getPrice(url) {
 	return new Promise(function(resolve, reject) {
+		console.log("getPrice", url);
 		axios.get(url).then(function(res) {
 			var price = 0;
 			var body = cheerio.load(res.data);
 			var pricespan = body(".total-price")[0];
 			var productID = url.split(productURL)[1];
-			for (var i = 0; i < pricespan.children.length; i++) {
-				if (pricespan.children[i].name == "strong") {
-					price = parseInt(pricespan.children[i].children[0].data.replace(/,/g, ''));
+			if (pricespan) {
+				for (var i = 0; i < pricespan.children.length; i++) {
+					if (pricespan.children[i].name == "strong") {
+						price = parseInt(pricespan.children[i].children[0].data.replace(/,/g, ''));
+					}
 				}
 			}
 			cache.getLatestProductPrice(productID, function(err, ret) {
@@ -91,6 +95,25 @@ function getPrice(url) {
 		});
 	});
 }
+
+function isRocketDelivery(url) {
+	return new Promise(function(resolve, reject) {
+		console.log("isRocketDelivery", url);
+		axios.get(url).then(function(res) {
+			var ret = false;
+			var body = cheerio.load(res.data);
+			var rocketBadge = body(".delivery-badge-img");
+			if (rocketBadge.length > 0)
+				ret = true;
+			resolve(ret);
+		})
+		.catch(function (error) {
+			console.error(error);
+			reject(error);
+		});
+	});
+}
+module.exports.isRocketDelivery = isRocketDelivery;
 
 async function getPrices(arr) {
 		var prices = [];
@@ -115,8 +138,9 @@ async function getProduct(url) {
 	var img = await getProductImg(url);
 	var price = await getPrice(url);
 	var available = await getProductIsAvail(url);
+	var isRocket = await isRocketDelivery(url);
 	var productID = url.split(productURL)[1];
-	var product = {productID: productID, title: title, image: img, price: price.price, pricediff: price.pricediff, available: available};
+	var product = {productID: productID, title: title, image: img, price: price.price, pricediff: price.pricediff, available: available, isRocket: isRocket};
 	return product;
 }
 module.exports.getProduct = getProduct;
@@ -195,6 +219,42 @@ function getLastProductAvail(productID, cb) {
 }
 module.exports.getLastProductAvail = getLastProductAvail;
 
+function getProductNoti(productID, cb) {
+	cache.getProductNoti(productID, function(e, r) {
+		if (e) {
+			console.error("crawler.getProductNoti err:", e);
+			cb(e, null);
+		} else {
+			console.log("crawler.getProductNoti ret:", r);
+			cb(null, r);
+		}
+	});
+}
+module.exports.getProductNoti = getProductNoti;
+
+function setProductNoti(productID, notify, cb) {
+	cache.setProductNoti(productID, notify, function(e, r) {
+		if (e) {
+			console.error("crawler.setProductNoti err:", e);
+			cb(e, null);
+		} else {
+			cb(null, r);
+		}
+	});
+}
+module.exports.setProductNoti = setProductNoti;
+
+function getProductNotiList(cb) {
+	cache.getProductNotiList(function(err, ret) {
+		if (err) {
+			cb(err, null);
+		} else {
+			cb(null, ret);
+		}
+	});
+}
+module.exports.getProductNotiList = getProductNotiList;
+
 function removeProduct(productID, cb) {
 	cache.removeProduct(productID, function(err, ret) {
 		if (err) {
@@ -232,16 +292,44 @@ function priceUpdateBatch(productID) {
 								var diff = oldPrice - newPrice;
 								console.log(productID, "price down");
 								getProduct(url).then(function(r) {
-									var msg = "Price DOWN " + diff + "won \n" + r.title + "\n" + productURL + productID;
-									messaging.sendTelegram(msg);
+									var title = r.title;
+									var isRocket = r.isRocket;
+									getProductNoti(productID, function(e, r) {
+										if (e) {
+										} else {
+											if (r != false) {
+												var delivery = "로켓배송"
+												if (!isRocket)
+													delivery = "일반배송";
+												var msg = "Price DOWN " + diff + "won, " + delivery + "\n" + title + "\n" + productURL + productID;
+												messaging.sendTelegram(msg);
+											} else {
+												console.log(productID, "not set to notify");
+											}
+										}
+									});
 								});
 							} else if (oldPrice < newPrice) {
 								// price up
 								var diff = newPrice - oldPrice;
 								console.log(productID, "price up");
 								getProduct(url).then(function(r) {
-									var msg = "Price UP " + diff + "won \n" + r.title + "\n" + productURL + productID;
-									messaging.sendTelegram(msg);
+									var title = r.title;
+									var isRocket = r.isRocket;
+									getProductNoti(productID, function(e, r) {
+										if (e) {
+										} else {
+											if (r != false) {
+												var delivery = "로켓배송"
+												if (!isRocket)
+													delivery = "일반배송";
+												var msg = "Price UP " + diff + "won, " + delivery + "\n" + title + "\n" + productURL + productID;
+												messaging.sendTelegram(msg);
+											} else {
+												console.log(productID, "not set to notify");
+											}
+										}
+									});
 								});
 							}
 
@@ -295,11 +383,26 @@ function priceUpdateBatch(productID) {
 													if (e) {
 														console.error("getProductTitle err:", err);
 													} else {
-														var avail = "판매중";
-														if (r.available == 1) avail = "품절";
-														else if (r.available ==2) avail = "판매중지"
-														var msg = r.title + " state changed to " + avail + "\n" + url;//" https:" + r.image;
-														messaging.sendTelegram(msg);
+														var title = r.title;
+														var available = r.available;
+														var image = r.image;
+														var isRocket = r.isRocket;
+														getProductNoti(productID, function(e, r) {
+															if (e) {
+															} else {
+																if (r != false) {
+																	var avail = "판매중";
+																	var delivery  = "로켓배송";
+																	if (available == 1) avail = "품절";
+																	else if (available ==2) avail = "판매중지"
+																	if (!isRocket) delivery = "일반배송";
+																	var msg = title + " state changed to " + avail + ", " + delivery +"\n" + url;//" https:" + image;
+																	messaging.sendTelegram(msg);
+																} else {
+																	console.log(productID, "not set to notify");
+																}
+															}
+														});
 													}
 												});
 											}

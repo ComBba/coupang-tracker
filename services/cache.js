@@ -7,6 +7,7 @@ var productKey = config.get("cache.keys.product");
 var availKey = config.get("cache.keys.productAvail");
 var productHistoryKey = config.get("cache.keys.productHistory");
 var productURL = config.get("coupang.productURL");
+var productNoti = config.get("cache.keys.productNotify");
 
 redisclient.on("error", function(error) {
   console.error(error);
@@ -150,11 +151,16 @@ function removeProduct(productID, cb) {
 	var pkey = productKey + productID;
 	var hkey = productHistoryKey + productID;
 	var akey = availKey + productID;
+	var nkey = productNoti + productID;
 	console.log("cache removeProduct", pkey, hkey);
 
 	redisclient.del(pkey, function(e, r) {
 		if (e) {
 			console.error(e);
+			redisclient.del(nkey, function(e, r) {
+			});
+			redisclient.del(nkey, function(e, r) {
+			});
 			redisclient.del(hkey, function(e, r) {
 				if (e) {
 					console.error(e);
@@ -166,6 +172,10 @@ function removeProduct(productID, cb) {
 			});
 		} else {
 			console.log("removeProduct product:", productID, r);
+			redisclient.del(nkey, function(e, r) {
+			});
+			redisclient.del(nkey, function(e, r) {
+			});
 			redisclient.del(hkey, function(e, r) {
 				if (e) {
 					console.error(e);
@@ -196,3 +206,44 @@ function getProductList(cb) {
 }
 module.exports.getProductList = getProductList;
 
+function getProductNoti(productID, cb) {
+	var key = productNoti + productID;
+	redisclient.get(key, function(err, ret) {
+		if (err) {
+			console.error("getProductNoti err:", err);
+			cb(err, null);
+		} else {
+			console.log("getProductNoti", productID, ret);
+			ret = JSON.parse(ret);
+			cb(null, ret);
+		}
+	});
+}
+module.exports.getProductNoti = getProductNoti;
+
+function setProductNoti(productID, notify, cb) {
+	var key = productNoti + productID;
+	redisclient.set(key, notify, function(err, ret) {
+		if (err) {
+			cb(err, null);
+		} else {
+			cb(null, ret);
+		}
+	});
+}
+module.exports.setProductNoti = setProductNoti;
+
+function getProductNotiList(cb) {
+	var key = productNoti + "*";
+	redisclient.keys(key, function(err, ret) {
+		if (err) {
+			console.error("getProductNotiList err:", err);
+			cb(err, null);
+		} else {
+			console.log("getProductNotiList:", ret);
+			// returns in array
+			cb(null, ret);
+		}
+	});
+}
+module.exports.getProductNotiList = getProductNotiList;

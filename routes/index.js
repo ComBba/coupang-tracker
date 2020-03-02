@@ -7,6 +7,7 @@ var crawler = require('../services/price-crawler');
 var pdNamespace = config.get("coupang.productNamespace");
 var pdURL = config.get("coupang.productURL");
 var productKey = config.get("cache.keys.product");
+var productNoti = config.get("cache.keys.productNotify");
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -58,30 +59,18 @@ router.get("/register/list", function(req, res, next) {
 				res.status(503);
 				res.send(e);
 			});
-			/*
-			for (var i = 0; i < ret.length; i++) {
-				(function(i) {
-					var productID = ret[i].split(productKey)[1];
-					var url = pdURL + productID;
-					crawler.getProduct(url).then(function(r) {
-						console.log("list push", r);
-						list.push(r);
-						if (i == ret.length -1) {
-							console.log("Send list");
-							res.json(list);
-						}
-					});
-				})(i);
-			}
-			*/
 		}
 	});
 });
 
 router.post('/register/add', function(req, res, next) {
 	var productURL = req.body.url;
+	var vendorItemId = req.body.vendorItemId;
+	if (vendorItemId)
+		productURL += "?vendorItemId=" + vendorItemId;
 	var productObj = url.parse(productURL);
 	var productID = productObj.pathname.split(pdNamespace)[1];
+
 	// get price and cache
 	crawler.getProduct(productURL).then(function(r) {
 		if (r.price) {
@@ -117,6 +106,37 @@ router.post('/register/remove', function(req, res, next) {
 			res.send(err);
 		} else {
 			console.log("/register/remove", productID, ret);
+			res.json(ret);
+		}
+	});
+});
+
+router.get('/notify/list', function(req, res, next) {
+});
+
+router.get('/notify/:productID', function(req, res, next) {
+	var productID = req.params.productID;
+	crawler.getProductNoti(productID, function(err, ret) {
+		if (err) {
+			console.error("/notify/", productID, err);
+			res.status(503);
+			res.send(err);
+		} else {
+			console.log("/notify/", productID, ret);
+			res.json(ret);
+		}
+	});
+});
+router.post('/notify/:productID/:noti', function(req, res, next) {
+	var productID = req.params.productID;
+	var noti = req.params.noti;
+	crawler.setProductNoti(productID, noti, function(err, ret) {
+		if (err) {
+			console.error("/notify/", productID, noti, err);
+			res.status(503);
+			res.send(err);
+		} else {
+			console.log("/notify/", productID, noti, ret);
 			res.json(ret);
 		}
 	});

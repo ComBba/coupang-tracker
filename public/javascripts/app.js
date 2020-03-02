@@ -126,18 +126,41 @@ function parseURL(url) {
 	var l = document.createElement("a");
 	l.href = url;
 	if (l.host == "www.coupang.com") {
-		return l.protocol + "//" + l.hostname + l.pathname;
+		var path = new URL(url);
+		var vendorItemId = path.searchParams.get("vendorItemId");
+		return {product: l.protocol + "//" + l.hostname + l.pathname, vendorItemId: vendorItemId};
 	} else {
 		return false;
 	}
 }
 
-function addTrack(url, cb) {
-	var postdata = {url: url};
+function getNoti(productID, cb) {
+	$.getJSON("notify/" + productID, function(r) {
+		cb(r);
+	});
+}
+
+function setNoti(productID, noti, cb) {
+	$.ajax({
+		url: "notify/" + productID + "/" + noti, type: "POST",
+		success: function(data, textStatus, jqXHR) {
+			console.log(productID + " set " + noti + " done with " + data);
+			cb(null, data);
+		},
+		error: function(jqXHR, textStatus, errorThrown) {
+			console.error(textStatus);
+			console.error(errorThrown);
+			cb(errorThrown, null);
+		}
+	});
+}
+
+function addTrack(product, cb) {
+	var postdata = {url: product.product, vendorItemId: product.vendorItemId};
 	$.ajax({
 		url: "register/add", type: "POST", data: postdata,
 		success: function(data, textStatus, jqXHR) {
-			console.log(url + " added");
+			console.log(product.product + " added");
 			console.log(data);
 			cb(null, data);
 		},
@@ -236,7 +259,11 @@ function createPane(item) {
 	} else if (item.available == 2) {
 		isAvailable = "판매중지";
 	}
-
+	var delivery = "unknown";
+	if (item.isRocket == true)
+		delivery = "\<img src=\"images/rocket_logo.png\" width=56 height=14\>";
+	else
+		delivery = "일반배송";
 	var pane = document.getElementById(productID);
 	if (pane == undefined) {
 		pane = document.createElement("div");
@@ -250,7 +277,7 @@ function createPane(item) {
 		pane.appendChild(title);
 		var pricepane = document.createElement("div");
 		pricepane.id = "price-" + productID;
-		pricepane.innerHTML = numberWithCommas(price) + "원 (" + pricediff + ")";
+		pricepane.innerHTML = numberWithCommas(price) + "원 (" + pricediff + ") " + delivery;
 		pane.appendChild(pricepane);
 		var availpane = document.createElement("div");
 		availpane.id = "avail-" + productID;
@@ -291,6 +318,32 @@ function createPane(item) {
 		};
 		pane.appendChild(delbtn);
 
+		var notibtn = document.createElement("BUTTON");
+		notibtn.className = "btn btn-info btn-sm";
+		notibtn.type = "button";
+		notibtn.id = "noti-" + productID;
+		notibtn.onclick = function() {
+			var ID = this.id.split("noti-")[1];
+			var currStatus = this.innerHTML;
+			var setNotiVal = false;
+			var newStatus = "noti on";
+			if (currStatus == "noti off") {
+				setNotiVal = true;
+				newStatus = "noti on";
+			}
+			setNoti(ID, setNotiVal, function(e, r) {
+				if (e) {
+				} else {
+					var notiPane = document.getElementById("noti-" + productID);
+					if (notiPane.innerHTML == "noti on")
+						notiPane.innerHTML = "noti off";
+					else
+						notiPane.innerHTML = "noti on";
+				}
+			});
+		}
+		pane.appendChild(notibtn);
+
 		content.appendChild(pane);
 	} else {
 		var pricepane = document.getElementById("price-" + productID);
@@ -299,4 +352,11 @@ function createPane(item) {
 		availpane.innerHTML = isAvailable;
 		console.log(productID, "updated");
 	}
+	// Update Noti indicator
+	getNoti(productID, function(r) {
+		var notiPane = document.getElementById("noti-" + productID);
+		var txt = "noti on";
+		if (!r) txt = "noti off";
+		notiPane.innerHTML = txt;
+	});
 }
